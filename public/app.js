@@ -13,33 +13,37 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
-// ボタンを押した時の処理
+// ... (上の共通関数はそのまま)
+
 document.getElementById('sub-btn').addEventListener('click', async () => {
   try {
-    // 1. Service Workerを登録
     const register = await navigator.serviceWorker.register('/sw.js');
-    console.log('Service Worker 登録成功');
-
-    // 2. 通知の購読を開始
     const subscription = await register.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
     });
-    console.log('Push購読成功');
 
-    // 3. サーバー(Render)に購読情報を送る
-    await fetch('/subscribe', {
-      method: 'POST',
-      body: JSON.stringify(subscription),
-      headers: {
-        'content-type': 'application/json'
-      }
-    });
+    // 複数の請求書を登録するテスト（本来はフォームから入力）
+    const invoices = [
+      { title: "4月分電気代", deadline: "2026-04-30T10:00:00", pdfUrl: "/pdf1.pdf" },
+      { title: "5月分家賃", deadline: "2026-05-25T10:00:00", pdfUrl: "/pdf2.pdf" }
+    ];
 
-    alert('通知の登録が完了しました！1分以内にテスト通知が届きます。');
+    for (const inv of invoices) {
+      await fetch('/add-invoice', {
+        method: 'POST',
+        body: JSON.stringify({
+          subscription: subscription,
+          title: inv.title,
+          deadline: inv.deadline,
+          pdfUrl: inv.pdfUrl
+        }),
+        headers: { 'content-type': 'application/json' }
+      });
+    }
 
+    alert('全ての請求書の通知登録が完了しました！');
   } catch (error) {
-    console.error('エラー内容:', error);
-    alert('エラーが発生しました。設定アプリで通知が許可されているか確認してください。\nエラー: ' + error.message);
+    console.error(error);
   }
 });
