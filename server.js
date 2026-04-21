@@ -3,7 +3,6 @@ const webpush = require('web-push');
 const cron = require('node-cron');
 const app = express();
 
-// Renderの環境変数からVAPIDキーを読み込む
 const vapidKeys = {
   publicKey: process.env.VAPID_PUBLIC_KEY,
   privateKey: process.env.VAPID_PRIVATE_KEY
@@ -14,75 +13,87 @@ webpush.setVapidDetails('mailto:test@example.com', vapidKeys.publicKey, vapidKey
 app.use(express.json());
 app.use(express.static('public'));
 
-// 請求書データを保存する配列
-// ※Render無料版は再起動で消えるため、本番はDB推奨
-let userInvoices = []; 
-
-// 請求書登録API
-app.post('/add-invoice', (req, res) => {
-  const { subscription, title, deadline, pdfUrl } = req.body;
-  
-  // GoogleドライブのURLを直リンクに自動変換するロジック
-  let finalPdfUrl = pdfUrl;
-  if (pdfUrl.includes('drive.google.com')) {
-    const fileId = pdfUrl.split('/d/')[1]?.split('/')[0];
-    if (fileId) {
-      finalPdfUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-    }
+// ==========================================
+// 【ここを書き換えるだけでOK！】請求書リスト
+// ==========================================
+const INVOICE_LIST = [
+  {
+    title: "モバイルバッテリー貸出",
+    deadline: "2026-10-31",
+    pdfUrl: "https://drive.google.com/file/d/1PJyAsbQy32zLK5ynS-X_cIri0nsTylFk/view?usp=sharing"
+  },
+  {
+    title: "スマホ設定料金(データ移行など)",
+    deadline: "2026-12-25",
+    pdfUrl: "https://drive.google.com/file/d/1bG5UItpYqublM93WQ2XApsV1E9kXCGIf/view?usp=sharing" // 追加したければここを増やす
+  },
+  {
+    title: "スマホ設定料金(ショートカットなど)",
+    deadline: "2027-01-01",
+    pdfUrl: "https://drive.google.com/file/d/1e5ZM4UaZUZ3yi4AKn1yD1OJzD9cwrC6F/view?usp=sharing"
   }
+];
 
-  userInvoices.push({
-    sub: subscription,
-    title: title,
-    deadline: new Date(deadline),
-    pdfUrl: finalPdfUrl,
-    sentHistory: [] // 重複送信防止用
-  });
+// ユーザーの通知登録先を保存する変数（これだけは動的に保存が必要）
+let globalSubscription = null;
 
-  console.log(`登録成功: ${title} (期限: ${deadline})`);
-  res.status(201).json({ message: "登録に成功しました" });
+app.post('/subscribe', (req, res) => {
+  globalSubscription = req.body;
+  console.log("通知登録を受け付けました");
+  res.status(201).json({});
 });
 
-// 通知送信の共通関数
-const sendPush = (sub, title, body, url) => {
-  const payload = JSON.stringify({ title, body, url });
-  webpush.sendNotification(sub, payload).catch(err => {
-    console.error("送信エラー:", err.statusCode);
+// Googleドライブ直リンク変換関数
+const getDirectLink = (url) => {
+  if (url.includes('drive.google.com')) {
+    const id = url.split('/d/')[1]?.split('/')[0];
+    return id ? `https://drive.google.com/uc?export=view&id=${id}` : url;
+  }
+  return url;
+};
+
+// 通知送信メイン処理
+const checkAndSend = () => {
+  if (!globalSubscription) return console.log("登録ユーザーがいません");
+
+  const now = new Date();
+  // 日本時間に合わせるための調整（RenderはUTCなので+9時間）
+  const today = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+  today.setHours(0, 0, 0, 0);
+
+  INVOICE_LIST.forEach(inv => {
+    const dDate = new Date(inv.deadline);
+    dDate.setHours(0, 0, 0, 0);
+
+    // 残り日数を計算
+    const diffDays = Math.round((dDate - today) / (1000 * 60 * 60 * 24));
+    
+    // 指定のタイミングか判定
+    const targetDays = [60, 30, 7, 3, 2, 1, 0];
+    
+    if (targetDays.includes(diffDays)) {
+      const label = diffDays === 0 ? "本日" : `${diffDays}日前`;
+      
+      const payload = JSON.stringify({
+        title: `【${inv.title}】期限の${label}`,
+        body: `支払い期限: ${inv.deadline}\nタップしてPDFを確認してください。`,
+        url: getDirectLink(inv.pdfUrl)
+      });
+
+      webpush.sendNotification(globalSubscription, payload)
+        .then(() => console.log(`${inv.title} の通知（${label}）を送信しました`))
+        .catch(err => console.error("送信エラー:", err));
+    }
   });
 };
 
-// スケジュール設定：毎日午前10時に全データをチェック
-// テスト時は '* * * * *' (1分ごと) に書き換えてください
-cron.schedule('0 10 * * *', () => {
-  const now = new Date();
-  console.log(`チェック開始: ${now.toLocaleString()}`);
+// 毎日午前10時にチェック（サーバーの時刻設定に注意）
+cron.schedule('0 10 * * *', checkAndSend);
 
-  userInvoices.forEach(inv => {
-    // 残り日数の計算
-    const diffTime = inv.deadline - now;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    // 通知を送るタイミングのリスト
-    const targetDays = [60, 30, 7, 3, 2, 1, 0];
-
-    if (targetDays.includes(diffDays)) {
-      const historyKey = `${inv.title}_${diffDays}`;
-      
-      // まだその日の通知を送っていない場合のみ送信
-      if (!inv.sentHistory.includes(historyKey)) {
-        const label = diffDays === 0 ? "本日" : `${diffDays}日前`;
-        
-        sendPush(
-          inv.sub,
-          `【${inv.title}】期限の${label}です`,
-          `支払い期限は ${inv.deadline.toLocaleDateString('ja-JP')} です。タップしてPDFを確認してください。`,
-          inv.pdfUrl
-        );
-        
-        inv.sentHistory.push(historyKey);
-      }
-    }
-  });
+// 【おまけ】デプロイ直後やボタンを押した時にテストしたい場合用のエンドポイント
+app.get('/test-send', (req, res) => {
+  checkAndSend();
+  res.send("通知チェックを実行しました。ログを確認してください。");
 });
 
 const PORT = process.env.PORT || 3000;

@@ -1,14 +1,167 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-    <title>請求書通知アプリ</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INVOICE OS / Terminal</title>
     <link rel="manifest" href="/manifest.json">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+JP:wght@300;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-purple: #bc13fe;
+            --bg-dark: #0a0b1e;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 50% 50%, #1a1b3a 0%, var(--bg-dark) 100%),
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 100%, 100% 2px, 3px 100%;
+            color: white;
+            font-family: 'Noto Sans JP', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            letter-spacing: 5px;
+            color: var(--neon-blue);
+            text-shadow: 0 0 10px var(--neon-blue);
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+
+        #invoice-container {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .invoice-card {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-left: 5px solid var(--neon-blue);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .invoice-title {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .invoice-days {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+
+        .invoice-days span {
+            font-size: 1rem;
+            color: var(--neon-blue);
+        }
+
+        .deadline-date {
+            font-size: 0.8rem;
+            color: var(--neon-purple);
+            margin-top: 10px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        button {
+            background: transparent;
+            border: 1px solid var(--neon-purple);
+            color: var(--neon-purple);
+            padding: 10px 20px;
+            font-family: 'Orbitron', sans-serif;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 40px;
+            width: 100%;
+            max-width: 300px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        button:hover {
+            background: var(--neon-purple);
+            color: white;
+            box-shadow: 0 0 20px var(--neon-purple);
+        }
+
+        /* アニメーション */
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+        .scanline {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100px;
+            background: linear-gradient(0deg, rgba(0, 243, 255, 0.05) 0%, transparent 100%);
+            animation: scan 4s linear infinite;
+            pointer-events: none;
+        }
+    </style>
 </head>
 <body>
-    <h1>請求書通知マネージャー</h1>
-    <button id="sub-btn">通知を許可して登録する</button>
+    <div class="scanline"></div>
+    <h1>System Terminal</h1>
+
+    <div id="invoice-container">
+        </div>
+
+    <button id="sub-btn">Initialize Sync</button>
 
     <script src="/app.js"></script>
+    <script>
+        // server.jsと同じリストをここに書きます
+        const INVOICES = [
+            { title: "April Rent", deadline: "2026-04-30" },
+            { title: "Electricity", deadline: "2026-05-25" }
+        ];
+
+        function updateUI() {
+            const container = document.getElementById('invoice-container');
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+
+            container.innerHTML = INVOICES.map(inv => {
+                const dDate = new Date(inv.deadline);
+                const diffTime = dDate - now;
+                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                
+                return `
+                    <div class="invoice-card">
+                        <div class="invoice-title">${inv.title}</div>
+                        <div class="invoice-days">
+                            ${diffDays} <span>DAYS LEFT</span>
+                        </div>
+                        <div class="deadline-date">TARGET: ${inv.deadline}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        updateUI();
+    </script>
 </body>
 </html>
