@@ -37,7 +37,7 @@ cron.schedule('* * * * *', () => {
   const now = new Date();
   subscriptions.forEach(user => {
     // ここに「2ヶ月前」などの条件を書きますが、まずはテストで即時送る設定
-    sendNotification(user.sub, "請求書の確認", "PDFはこちらから", "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf");
+    sendNotification(user.sub, "請求書の確認", "PDFはこちらから", "https://invoice-notification.onrender.com/your-inboice");
   });
 });
 
