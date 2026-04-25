@@ -23,6 +23,11 @@ const INVOICE_LIST = [
     pdfUrl: "https://drive.google.com/file/d/1PJyAsbQy32zLK5ynS-X_cIri0nsTylFk/view?usp=sharing"
   },
   {
+    title: "スマホ設定料金(モバイルSuica)",
+    deadline: "2026-05-04",
+    pdfUrl: "https://drive.google.com/file/d/14aNz9cfa9KpyGhVozpvq_oumN-QALUJb/view?usp=sharing"
+  },
+  {
     title: "スマホ設定料金(データ移行など)",
     deadline: "2026-12-25",
     pdfUrl: "https://drive.google.com/file/d/1bG5UItpYqublM93WQ2XApsV1E9kXCGIf/view?usp=sharing" // 追加したければここを増やす
