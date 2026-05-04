@@ -31,11 +31,6 @@ const INVOICE_LIST = [
     title: "スマホ設定料金(データ移行など)",
     deadline: "2026-12-25",
     pdfUrl: "https://drive.google.com/file/d/1bG5UItpYqublM93WQ2XApsV1E9kXCGIf/view?usp=sharing" // 追加したければここを増やす
-  },
-  {
-    title: "スマホ設定料金(ショートカットなど)",
-    deadline: "2027-01-01",
-    pdfUrl: "https://drive.google.com/file/d/1e5ZM4UaZUZ3yi4AKn1yD1OJzD9cwrC6F/view?usp=sharing"
   }
 ];
 
